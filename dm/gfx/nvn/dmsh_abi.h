@@ -66,3 +66,6 @@
 #define DMSH_BORDER_K 0x10               // byte offset of sampler bit i's factors k (a float4) in the block: DMSH_BORDER_K + 16 i
 #define DMSH_BORDER_TWIN "_w"            // the suffix of a twin sampler member's name
 #define DMSH_BORDER_MEMBER "dm_border"   // the name of the block's member in the argument buffer
+
+// The alpha test's state (dm/gfx/tools/dmsh_alpha.py, the <key>_ba libraries): uint function (NVN_ALPHA_FUNC_*), float reference, at this fragment buffer index (nvn_mtl.m at_bind)
+#define DMSH_ALPHA_BUFFER 30             // the fragment argument table's last binding; translated shaders use only buffer 0 there
