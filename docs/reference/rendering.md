@@ -189,6 +189,15 @@ The replay on Metal (`dm/gfx/nvn/nvn_mtl.m`) and the Vulkan and OpenGL layers. E
 - **Fix:** `samp_by_id` (NVN) and `vkCreateSampler` set it, clamped to that range (Vulkan to the ±15 the device reports as `maxSamplerLodBias`).
 - **Found on:** [Super Mario Galaxy](../../dm/games/010099C022B96000/README.md) (the Vulkan red line). MacNativeGames uses the property for its own MetalFX bias, which pointed to it.
 
+### Border colours Metal has no sampler state for
+
+- **Symptom:** whatever a game keeps in a texture that it samples past its edge with clamp-to-border reads the wrong value there: grass flattened along Link's path in Tears of the Kingdom, its bend map filled with "bent" wherever the window scrolled.
+- **Cause:** NVN's `SamplerBuilderSetBorderColor` takes any RGBA colour; `MTLSamplerBorderColor` has transparent black, opaque black and opaque white only, and `samp_by_id` took the nearest of them. Tears of the Kingdom's border (0.5, 0.5, 0.5, 0.5) became (0, 0, 0, 0).
+- **Fix:** a filtered sample is linear in the border colour, so two samples through samplers that differ only in their Metal border colour give the exact one: r = s_n + (s_w − s_n)·k, k = (B − Bn) / (Bw − Bn) per channel. The build (`dmsh_build.py border_emu`) wraps every sample through a sampler member of the argument buffer in `dm_bs(…)`, adds a twin sampler member `<member>_w` for each, and one block `dm_border` (a mask word, then k per sampler; `DMSH_BORDER_*` in `dmsh_abi.h`). The host (`nvn_border.h`) keeps the nearest Metal colour for the sampler and makes a twin only for a colour Metal lacks when a wrap mode reaches the border and no min / max reduction is set; `encode_args` binds the twin and sets the sampler's bit and k, and binds the shared zero bank as the block otherwise. Every other sample costs one uniform branch on the mask; the twin sample runs only for those samplers. The readable-tile variants (`dmsh_fetch.py`) replace a wrapped sample whole, so a tile read is never corrected.
+- **Not covered:** samples through sampler arrays, `sample_compare` and `gather` keep the nearest Metal colour; so does the Vulkan layer, which has its own translation.
+- **Found on:** [The Legend of Zelda: Tears of the Kingdom](../../dm/games/0100F2C0115B6000/README.md): the grass bend map, a 256×256 RG8 window that follows Link, advanced by `ff9def5b3c418851` with wrap 5 and border 0.5.
+- **Check:** `t_border` (nvn_border's choices for opaque, translucent and Metal's own colours, and the registry's twins) and `test_dmsh_border.py` (the rewrite, the reflection, the readable-tile variant, the compile for macOS and iOS, and with `make check_t_border` the GPU: corrected samples against Maxwell's bilinear filter with the border colour, and Metal's nearest colour with the mask clear).
+
 ### Texture fields Metal refuses
 
 - **Symptom:** the process ends at once (the window vanishes), with `-[MTLTextureDescriptorInternal validateWithDevice:]` failing an assertion such as `requests 9 mipmap levels, but the dimensions (1, 1, 1) can only support 1`, or `sampleCount must be > 1 for multisample textures`.

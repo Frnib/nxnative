@@ -841,7 +841,7 @@ Finding, keying and translating shaders (`dm/gfx/tools/shader_split.py`, `dmsh_b
 
 - **Symptom:** `[RED] shader … reflection conversion failed: 66 bindings, over the limit 64`, then `failed to load`, and the draws with it are dropped (a black map).
 - **Cause:** the reflection is converted into fixed arrays of `NVN_REFL_MAXB` bindings (`nvn_refl.h`), which was 64. NVN gives a stage 32 textures and 32 samplers beside its uniform and storage buffers and images, so a shader can have more.
-- **Fix:** `NVN_REFL_MAXB` is 96; the argument buffer entries keep their own limit (`NVN_REFL_MAXARG`, 192).
+- **Fix:** `NVN_REFL_MAXB` is 128; the argument buffer entries keep their own limit (`NVN_REFL_MAXARG`, 256). Both were raised from 96 and 192 when every sampled sampler got a twin binding ([Border colours Metal has no sampler state for](rendering.md#border-colours-metal-has-no-sampler-state-for)): that shader then has 97 bindings.
 - **Found on:** [OCTOPATH TRAVELER II](../../dm/games/0100A3501946E000/README.md): the 3D world map of the traveler selection (`UiMM_WorldMap3D`, pixel shader `f7c8373b7323687d`: 30 textures, 30 samplers, 3 uniform buffers and the c1 / support / driver segments).
 
 ### Image atomics
